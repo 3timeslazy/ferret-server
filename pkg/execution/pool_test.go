@@ -17,8 +17,8 @@ type (
 	NoopStatusWriter struct{}
 
 	MockedStatusWriter struct {
-		// thread safe map[string][]execution.Status
-		jobs sync.Map
+		mu   sync.Mutex
+		jobs map[string][]execution.Status
 	}
 
 	MockedWorker struct {
@@ -75,15 +75,15 @@ func (nw *MockedWorker) Interrupt() {
 }
 
 func (sw *MockedStatusWriter) Write(state execution.State) error {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
 
-	found, ok := sw.jobs.Load(state.Job.ID)
+	found, ok := sw.jobs[state.Job.ID]
 	if !ok {
 		found = make([]execution.Status, 0, 5)
 	}
 
-	statuses := found.([]execution.Status)
-
-	sw.jobs.Store(state.Job.ID, append(statuses, state.Status))
+	sw.jobs[state.Job.ID] = append(found, state.Status)
 
 	return nil
 }
@@ -109,7 +109,7 @@ func NewMockedWorker(job execution.Job, data func() []byte, err func() error) ex
 
 func NewMockedStatusWriter() *MockedStatusWriter {
 	sw := new(MockedStatusWriter)
-	sw.jobs = sync.Map{}
+	sw.jobs = make(map[string][]execution.Status)
 
 	return sw
 }
@@ -229,14 +229,16 @@ func TestPool(t *testing.T) {
 
 			time.Sleep(time.Duration(1000) * time.Millisecond)
 
-			val, _ := sw.jobs.Load(completedJob.ID)
-			completedStatuses := val.([]execution.Status)
+			sw.mu.Lock()
+			completedStatuses := sw.jobs[completedJob.ID]
+			sw.mu.Unlock()
 
 			So(completedStatuses[0], ShouldEqual, execution.StatusRunning)
 			So(completedStatuses[1], ShouldEqual, execution.StatusCompleted)
 
-			val, _ = sw.jobs.Load(failedJob.ID)
-			failedStatuses := val.([]execution.Status)
+			sw.mu.Lock()
+			failedStatuses := sw.jobs[failedJob.ID]
+			sw.mu.Unlock()
 
 			So(failedStatuses[0], ShouldEqual, execution.StatusRunning)
 			So(failedStatuses[1], ShouldEqual, execution.StatusErrored)
@@ -284,8 +286,9 @@ func TestPool(t *testing.T) {
 
 			time.Sleep(time.Duration(100) * time.Millisecond)
 
-			val, _ := sw.jobs.Load(j.ID)
-			statuses := val.([]execution.Status)
+			sw.mu.Lock()
+			statuses := sw.jobs[j.ID]
+			sw.mu.Unlock()
 
 			So(statuses[0], ShouldEqual, execution.StatusRunning)
 			So(statuses[1], ShouldEqual, execution.StatusCancelled)
