@@ -9,23 +9,17 @@ import (
 	"errors"
 	"net/url"
 	golangswaggerpaths "path"
-	"strings"
 )
 
-// GetScriptURL generates an URL for the get script operation
-type GetScriptURL struct {
-	ProjectID string
-	ScriptID  string
-
+// TokenByCredentialsURL generates an URL for the token by credentials operation
+type TokenByCredentialsURL struct {
 	_basePath string
-	// avoid unkeyed usage
-	_ struct{}
 }
 
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetScriptURL) WithBasePath(bp string) *GetScriptURL {
+func (o *TokenByCredentialsURL) WithBasePath(bp string) *TokenByCredentialsURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -33,29 +27,15 @@ func (o *GetScriptURL) WithBasePath(bp string) *GetScriptURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetScriptURL) SetBasePath(bp string) {
+func (o *TokenByCredentialsURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetScriptURL) Build() (*url.URL, error) {
+func (o *TokenByCredentialsURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/projects/{projectID}/scripts/{scriptID}"
-
-	projectID := o.ProjectID
-	if projectID != "" {
-		_path = strings.Replace(_path, "{projectID}", projectID, -1)
-	} else {
-		return nil, errors.New("projectId is required on GetScriptURL")
-	}
-
-	scriptID := o.ScriptID
-	if scriptID != "" {
-		_path = strings.Replace(_path, "{scriptID}", scriptID, -1)
-	} else {
-		return nil, errors.New("scriptId is required on GetScriptURL")
-	}
+	var _path = "/auth/credentials"
 
 	_basePath := o._basePath
 	_result.Path = golangswaggerpaths.Join(_basePath, _path)
@@ -64,7 +44,7 @@ func (o *GetScriptURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetScriptURL) Must(u *url.URL, err error) *url.URL {
+func (o *TokenByCredentialsURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -75,17 +55,17 @@ func (o *GetScriptURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *GetScriptURL) String() string {
+func (o *TokenByCredentialsURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetScriptURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *TokenByCredentialsURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetScriptURL")
+		return nil, errors.New("scheme is required for a full url on TokenByCredentialsURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetScriptURL")
+		return nil, errors.New("host is required for a full url on TokenByCredentialsURL")
 	}
 
 	base, err := o.Build()
@@ -99,6 +79,6 @@ func (o *GetScriptURL) BuildFull(scheme, host string) (*url.URL, error) {
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetScriptURL) StringFull(scheme, host string) string {
+func (o *TokenByCredentialsURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

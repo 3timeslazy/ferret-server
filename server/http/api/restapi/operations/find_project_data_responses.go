@@ -49,11 +49,11 @@ func (o *FindProjectDataOK) WriteResponse(rw http.ResponseWriter, producer runti
 	rw.WriteHeader(200)
 	payload := o.Payload
 	if payload == nil {
+		// return empty array
 		payload = make([]*FindProjectDataOKBodyItems0, 0, 50)
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {
 		panic(err) // let the recovery middleware deal with this
 	}
-
 }

@@ -42,6 +42,28 @@ func init() {
     "version": "1.0.0-rc.1"
   },
   "paths": {
+    "/auth/credentials": {
+      "post": {
+        "summary": "Get token by username/password",
+        "operationId": "token-by-credentials",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/credentials-input"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "$ref": "#/definitions/token"
+            }
+          }
+        }
+      }
+    },
     "/projects": {
       "get": {
         "summary": "List Project",
@@ -446,11 +468,55 @@ func init() {
           "$ref": "#/parameters/scriptID"
         }
       ]
+    },
+    "/users": {
+      "post": {
+        "security": [
+          {
+            "X-Auth-Token": []
+          }
+        ],
+        "summary": "Create User",
+        "operationId": "createUser",
+        "parameters": [
+          {
+            "description": "****",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/user-create"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "schema": {
+              "$ref": "#/definitions/entity"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
     "any": {
       "title": "Any"
+    },
+    "credentials-input": {
+      "type": "object",
+      "title": "Credentials",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
     },
     "data-common": {
       "description": "The properties that are shared amongst all versions of the Data model.",
@@ -699,6 +765,15 @@ func init() {
         }
       }
     },
+    "principal": {
+      "type": "object",
+      "title": "Principal",
+      "properties": {
+        "role": {
+          "type": "string"
+        }
+      }
+    },
     "project-common": {
       "description": "The properties that are shared amongst all versions of the Project model.",
       "type": "object",
@@ -876,6 +951,41 @@ func init() {
       "description": "The properties that are allowed when updating a Script.",
       "title": "Script Update",
       "$ref": "#/definitions/script-common"
+    },
+    "token": {
+      "type": "object",
+      "title": "Token",
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "user-common": {
+      "type": "object",
+      "title": "User Common",
+      "required": [
+        "name",
+        "password"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "user-create": {
+      "title": "User Create",
+      "$ref": "#/definitions/user-common"
     }
   },
   "parameters": {
@@ -945,6 +1055,14 @@ func init() {
         "type": "string"
       }
     }
+  },
+  "securityDefinitions": {
+    "X-Auth-Token": {
+      "description": "Token-based Authentication",
+      "type": "apiKey",
+      "name": "x-auth-token",
+      "in": "header"
+    }
   }
 }`))
 	FlatSwaggerJSON = json.RawMessage([]byte(`{
@@ -972,6 +1090,50 @@ func init() {
     "version": "1.0.0-rc.1"
   },
   "paths": {
+    "/auth/credentials": {
+      "post": {
+        "summary": "Get token by username/password",
+        "operationId": "token-by-credentials",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "title": "Credentials",
+              "required": [
+                "username",
+                "password"
+              ],
+              "properties": {
+                "password": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "title": "Token",
+              "required": [
+                "token"
+              ],
+              "properties": {
+                "token": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects": {
       "get": {
         "summary": "List Project",
@@ -2410,11 +2572,105 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/users": {
+      "post": {
+        "security": [
+          {
+            "X-Auth-Token": []
+          }
+        ],
+        "summary": "Create User",
+        "operationId": "createUser",
+        "parameters": [
+          {
+            "description": "****",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "title": "User Common",
+              "required": [
+                "name",
+                "password"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "schema": {
+              "description": "Represents a database entity",
+              "title": "Entity",
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "rev"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "rev": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "description": "Response model for data creation endpoints",
+                  "type": "object",
+                  "title": "Metadata",
+                  "required": [
+                    "created_at"
+                  ],
+                  "properties": {
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
     "any": {
       "title": "Any"
+    },
+    "credentials-input": {
+      "type": "object",
+      "title": "Credentials",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
     },
     "data-common": {
       "description": "The properties that are shared amongst all versions of the Data model.",
@@ -2945,6 +3201,15 @@ func init() {
           "type": "string"
         },
         "updated_at": {
+          "type": "string"
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "title": "Principal",
+      "properties": {
+        "role": {
           "type": "string"
         }
       }
@@ -3634,6 +3899,56 @@ func init() {
           }
         }
       }
+    },
+    "token": {
+      "type": "object",
+      "title": "Token",
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "user-common": {
+      "type": "object",
+      "title": "User Common",
+      "required": [
+        "name",
+        "password"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "user-create": {
+      "type": "object",
+      "title": "User Common",
+      "required": [
+        "name",
+        "password"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
     }
   },
   "parameters": {
@@ -3702,6 +4017,14 @@ func init() {
       "schema": {
         "type": "string"
       }
+    }
+  },
+  "securityDefinitions": {
+    "X-Auth-Token": {
+      "description": "Token-based Authentication",
+      "type": "apiKey",
+      "name": "x-auth-token",
+      "in": "header"
     }
   }
 }`))

@@ -18,6 +18,8 @@ import (
 	spec "github.com/go-openapi/spec"
 	strfmt "github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+
+	models "github.com/MontFerret/ferret-server/server/http/api/models"
 )
 
 // NewFerretServerAPI creates a new FerretServer instance
@@ -45,6 +47,9 @@ func NewFerretServerAPI(spec *loads.Document) *FerretServerAPI {
 		}),
 		CreateScriptHandler: CreateScriptHandlerFunc(func(params CreateScriptParams) middleware.Responder {
 			return middleware.NotImplemented("operation CreateScript has not yet been implemented")
+		}),
+		CreateUserHandler: CreateUserHandlerFunc(func(params CreateUserParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation CreateUser has not yet been implemented")
 		}),
 		DeleteExecutionHandler: DeleteExecutionHandlerFunc(func(params DeleteExecutionParams) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteExecution has not yet been implemented")
@@ -85,6 +90,9 @@ func NewFerretServerAPI(spec *loads.Document) *FerretServerAPI {
 		GetScriptDataHandler: GetScriptDataHandlerFunc(func(params GetScriptDataParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetScriptData has not yet been implemented")
 		}),
+		TokenByCredentialsHandler: TokenByCredentialsHandlerFunc(func(params TokenByCredentialsParams) middleware.Responder {
+			return middleware.NotImplemented("operation TokenByCredentials has not yet been implemented")
+		}),
 		UpdateProjectHandler: UpdateProjectHandlerFunc(func(params UpdateProjectParams) middleware.Responder {
 			return middleware.NotImplemented("operation UpdateProject has not yet been implemented")
 		}),
@@ -94,6 +102,14 @@ func NewFerretServerAPI(spec *loads.Document) *FerretServerAPI {
 		UpdateScriptDataHandler: UpdateScriptDataHandlerFunc(func(params UpdateScriptDataParams) middleware.Responder {
 			return middleware.NotImplemented("operation UpdateScriptData has not yet been implemented")
 		}),
+
+		// Applies when the "x-auth-token" header is set
+		XAuthTokenAuth: func(token string) (*models.Principal, error) {
+			return nil, errors.NotImplemented("api key auth (X-Auth-Token) x-auth-token from header param [x-auth-token] has not yet been implemented")
+		},
+
+		// default authorizer is authorized meaning no requests are blocked
+		APIAuthorizer: security.Authorized(),
 	}
 }
 
@@ -110,13 +126,13 @@ type FerretServerAPI struct {
 	Middleware      func(middleware.Builder) http.Handler
 
 	// BasicAuthenticator generates a runtime.Authenticator from the supplied basic auth function.
-	// It has a default implemention in the security package, however you can replace it for your particular usage.
+	// It has a default implementation in the security package, however you can replace it for your particular usage.
 	BasicAuthenticator func(security.UserPassAuthentication) runtime.Authenticator
 	// APIKeyAuthenticator generates a runtime.Authenticator from the supplied token auth function.
-	// It has a default implemention in the security package, however you can replace it for your particular usage.
+	// It has a default implementation in the security package, however you can replace it for your particular usage.
 	APIKeyAuthenticator func(string, string, security.TokenAuthentication) runtime.Authenticator
 	// BearerAuthenticator generates a runtime.Authenticator from the supplied bearer token auth function.
-	// It has a default implemention in the security package, however you can replace it for your particular usage.
+	// It has a default implementation in the security package, however you can replace it for your particular usage.
 	BearerAuthenticator func(string, security.ScopedTokenAuthentication) runtime.Authenticator
 
 	// JSONConsumer registers a consumer for a "application/json" mime type
@@ -125,12 +141,21 @@ type FerretServerAPI struct {
 	// JSONProducer registers a producer for a "application/json" mime type
 	JSONProducer runtime.Producer
 
+	// XAuthTokenAuth registers a function that takes a token and returns a principal
+	// it performs authentication based on an api key x-auth-token provided in the header
+	XAuthTokenAuth func(string) (*models.Principal, error)
+
+	// APIAuthorizer provides access control (ACL/RBAC/ABAC) by providing access to the request and authenticated principal
+	APIAuthorizer runtime.Authorizer
+
 	// CreateExecutionHandler sets the operation handler for the create execution operation
 	CreateExecutionHandler CreateExecutionHandler
 	// CreateProjectHandler sets the operation handler for the create project operation
 	CreateProjectHandler CreateProjectHandler
 	// CreateScriptHandler sets the operation handler for the create script operation
 	CreateScriptHandler CreateScriptHandler
+	// CreateUserHandler sets the operation handler for the create user operation
+	CreateUserHandler CreateUserHandler
 	// DeleteExecutionHandler sets the operation handler for the delete execution operation
 	DeleteExecutionHandler DeleteExecutionHandler
 	// DeleteProjectHandler sets the operation handler for the delete project operation
@@ -157,6 +182,8 @@ type FerretServerAPI struct {
 	GetScriptHandler GetScriptHandler
 	// GetScriptDataHandler sets the operation handler for the get script data operation
 	GetScriptDataHandler GetScriptDataHandler
+	// TokenByCredentialsHandler sets the operation handler for the token by credentials operation
+	TokenByCredentialsHandler TokenByCredentialsHandler
 	// UpdateProjectHandler sets the operation handler for the update project operation
 	UpdateProjectHandler UpdateProjectHandler
 	// UpdateScriptHandler sets the operation handler for the update script operation
@@ -226,6 +253,10 @@ func (o *FerretServerAPI) Validate() error {
 		unregistered = append(unregistered, "JSONProducer")
 	}
 
+	if o.XAuthTokenAuth == nil {
+		unregistered = append(unregistered, "XAuthTokenAuth")
+	}
+
 	if o.CreateExecutionHandler == nil {
 		unregistered = append(unregistered, "CreateExecutionHandler")
 	}
@@ -236,6 +267,10 @@ func (o *FerretServerAPI) Validate() error {
 
 	if o.CreateScriptHandler == nil {
 		unregistered = append(unregistered, "CreateScriptHandler")
+	}
+
+	if o.CreateUserHandler == nil {
+		unregistered = append(unregistered, "CreateUserHandler")
 	}
 
 	if o.DeleteExecutionHandler == nil {
@@ -290,6 +325,10 @@ func (o *FerretServerAPI) Validate() error {
 		unregistered = append(unregistered, "GetScriptDataHandler")
 	}
 
+	if o.TokenByCredentialsHandler == nil {
+		unregistered = append(unregistered, "TokenByCredentialsHandler")
+	}
+
 	if o.UpdateProjectHandler == nil {
 		unregistered = append(unregistered, "UpdateProjectHandler")
 	}
@@ -317,14 +356,26 @@ func (o *FerretServerAPI) ServeErrorFor(operationID string) func(http.ResponseWr
 // AuthenticatorsFor gets the authenticators for the specified security schemes
 func (o *FerretServerAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 
-	return nil
+	result := make(map[string]runtime.Authenticator)
+	for name, scheme := range schemes {
+		switch name {
+
+		case "X-Auth-Token":
+
+			result[name] = o.APIKeyAuthenticator(scheme.Name, scheme.In, func(token string) (interface{}, error) {
+				return o.XAuthTokenAuth(token)
+			})
+
+		}
+	}
+	return result
 
 }
 
 // Authorizer returns the registered authorizer
 func (o *FerretServerAPI) Authorizer() runtime.Authorizer {
 
-	return nil
+	return o.APIAuthorizer
 
 }
 
@@ -415,6 +466,11 @@ func (o *FerretServerAPI) initHandlerCache() {
 	}
 	o.handlers["POST"]["/projects/{projectID}/scripts"] = NewCreateScript(o.context, o.CreateScriptHandler)
 
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/users"] = NewCreateUser(o.context, o.CreateUserHandler)
+
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
@@ -479,6 +535,11 @@ func (o *FerretServerAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/projects/{projectID}/data/{scriptID}/{dataId}"] = NewGetScriptData(o.context, o.GetScriptDataHandler)
+
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/auth/credentials"] = NewTokenByCredentials(o.context, o.TokenByCredentialsHandler)
 
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)

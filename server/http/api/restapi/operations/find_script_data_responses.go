@@ -49,11 +49,11 @@ func (o *FindScriptDataOK) WriteResponse(rw http.ResponseWriter, producer runtim
 	rw.WriteHeader(200)
 	payload := o.Payload
 	if payload == nil {
+		// return empty array
 		payload = make([]*FindScriptDataOKBodyItems0, 0, 50)
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {
 		panic(err) // let the recovery middleware deal with this
 	}
-
 }

@@ -51,7 +51,7 @@ func (o *FindProjectDataURL) Build() (*url.URL, error) {
 	if projectID != "" {
 		_path = strings.Replace(_path, "{projectID}", projectID, -1)
 	} else {
-		return nil, errors.New("ProjectID is required on FindProjectDataURL")
+		return nil, errors.New("projectId is required on FindProjectDataURL")
 	}
 
 	_basePath := o._basePath
