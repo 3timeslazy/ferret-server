@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/MontFerret/ferret-server/pkg/auth"
 	"github.com/MontFerret/ferret-server/pkg/execution"
 	"github.com/MontFerret/ferret-server/server/db"
 	"github.com/MontFerret/ferret-server/server/http"
@@ -13,6 +14,7 @@ type Settings struct {
 	HTTP       http.Settings
 	Database   db.Settings
 	Execution  execution.Settings
+	Auth       auth.Settings
 }
 
 func NewDefaultSettings() Settings {
@@ -22,5 +24,6 @@ func NewDefaultSettings() Settings {
 		HTTP:       http.NewDefaultSettings(),
 		Database:   db.NewDefaultSettings(),
 		Execution:  execution.NewDefaultSettings(),
+		Auth:       auth.NewDefaultSettings(),
 	}
 }

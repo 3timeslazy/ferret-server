@@ -1,6 +1,10 @@
 package utils
 
-import "unicode"
+import (
+	"math/rand"
+	"time"
+	"unicode"
+)
 
 // ToSnakeCase convert the given string to snake case following the Golang format:
 // acronyms are converted to lower-case and preceded by an underscore.
@@ -16,4 +20,34 @@ func StrToSnakeCase(in string) string {
 	}
 
 	return string(out)
+}
+
+const (
+	letterBytes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+// RandomString returns a random string of size `size`.
+func RandomString(size int) string {
+	randSrc := rand.NewSource(time.Now().UnixNano())
+
+	b := make([]byte, size)
+
+	for i, cache, remain := size-1, randSrc.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = randSrc.Int63(), letterIdxMax
+		}
+
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return string(b)
 }

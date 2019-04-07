@@ -9,6 +9,7 @@ require (
 	github.com/arangodb/go-driver v0.0.0-20190320083548-0be8c62a7d01
 	github.com/codegangsta/negroni v1.0.0
 	github.com/corpix/uarand v0.0.0 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-openapi/errors v0.19.0
 	github.com/go-openapi/loads v0.19.0
 	github.com/go-openapi/runtime v0.19.0
@@ -26,6 +27,8 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rs/zerolog v1.13.0
 	github.com/sethgrid/pester v0.0.0-20190127155807-68a33a018ad0 // indirect
+	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
+	golang.org/x/crypto v0.0.0-20190320223903-b7391e95e576
 	golang.org/x/net v0.0.0-20190328230028-74de082e2cca
 	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
 )

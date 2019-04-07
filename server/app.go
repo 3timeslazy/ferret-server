@@ -1,9 +1,15 @@
 package server
 
 import (
+	"context"
 	"os"
 	"runtime"
 
+	"github.com/MontFerret/ferret-server/server/http/api/models"
+	"github.com/dgrijalva/jwt-go"
+
+	"github.com/MontFerret/ferret-server/pkg/auth"
+	"github.com/MontFerret/ferret-server/pkg/common"
 	"github.com/MontFerret/ferret-server/pkg/execution"
 	"github.com/MontFerret/ferret-server/pkg/history"
 	"github.com/MontFerret/ferret-server/pkg/persistence"
@@ -37,6 +43,7 @@ type Application struct {
 	history     *history.Service
 	execution   *execution.Service
 	persistence *persistence.Service
+	auth        *auth.Service
 }
 
 func New(settings Settings) (*Application, error) {
@@ -87,8 +94,8 @@ func New(settings Settings) (*Application, error) {
 	mem := &runtime.MemStats{}
 	runtime.ReadMemStats(mem)
 
-	queueSize := uint64(mem.Sys/MEGABYTE) * 2
-	queue, err := execution.NewInMemoryQueue(uint64(queueSize))
+	queueSize := mem.Sys / MEGABYTE * 2
+	queue, err := execution.NewInMemoryQueue(queueSize)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "create execution queue")
@@ -105,6 +112,16 @@ func New(settings Settings) (*Application, error) {
 		persistence.ToWriter(perSrv),
 	)
 
+	if err != nil {
+		return nil, errors.Wrap(err, "create execution service")
+	}
+
+	authSrv, err := auth.NewService(dbManager)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "create auth service")
+	}
+
 	return &Application{
 		settings,
 		&logger,
@@ -115,6 +132,7 @@ func New(settings Settings) (*Application, error) {
 		historySrv,
 		execSrv,
 		perSrv,
+		authSrv,
 	}, nil
 }
 
@@ -134,6 +152,16 @@ func (app *Application) Run() error {
 	if err := app.configurePersistenceController(); err != nil {
 		return errors.Wrap(err, "configure persistence controller")
 	}
+
+	if err := app.configureAuthController(); err != nil {
+		return errors.Wrap(err, "configure auth controller")
+	}
+
+	if err := app.initRoot(); err != nil {
+		return errors.Wrap(err, "init root user")
+	}
+
+	app.initTokenBasedAuth()
 
 	return app.server.Run()
 }
@@ -199,4 +227,51 @@ func (app *Application) configurePersistenceController() error {
 	app.server.API().DeleteScriptDataHandler = operations.DeleteScriptDataHandlerFunc(ctl.Delete)
 
 	return nil
+}
+
+func (app *Application) configureAuthController() error {
+	ctl, err := controllers.NewAuth(app.auth)
+
+	if err != nil {
+		return errors.Wrap(err, "new auth controller")
+	}
+
+	app.server.API().TokenByCredentialsHandler = operations.TokenByCredentialsHandlerFunc(ctl.TokenByCredentials)
+
+	return nil
+}
+
+func (app *Application) initTokenBasedAuth() {
+
+	app.server.API().XAuthTokenAuth = func(tokenstr string) (*models.Principal, error) {
+		token, err := app.auth.ParseToken(tokenstr)
+		if err != nil {
+			return nil, err
+		}
+
+		m, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, errors.New("failed to get claims")
+		}
+
+		return &models.Principal{
+			Role: m["role"].(string),
+		}, nil
+	}
+
+}
+
+func (app *Application) initRoot() error {
+	_, err := app.auth.CreateUser(context.Background(), auth.User{
+		Credentials: auth.Credentials{
+			Name:     "root",
+			Password: app.settings.Auth.RootPassword,
+		},
+		Role: "ADMIN",
+	})
+	if err == nil || errors.Cause(err) == common.ErrNotUnique {
+		return nil
+	}
+
+	return errors.Wrap(err, "create admin")
 }

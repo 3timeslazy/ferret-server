@@ -1,9 +1,10 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
-	"net/http"
 )
 
 func InternalError() middleware.Responder {
@@ -35,6 +36,16 @@ func Bad(message string) middleware.Responder {
 		}
 
 		if err := producer.Produce(rw, message); err != nil {
+			panic(err)
+		}
+	})
+}
+
+func Unauthorized() middleware.Responder {
+	return middleware.ResponderFunc(func(rw http.ResponseWriter, producer runtime.Producer) {
+		rw.WriteHeader(http.StatusUnauthorized)
+
+		if err := producer.Produce(rw, "Unauthorized"); err != nil {
 			panic(err)
 		}
 	})

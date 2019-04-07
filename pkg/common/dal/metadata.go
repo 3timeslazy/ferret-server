@@ -1,6 +1,8 @@
 package dal
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	Entity struct {

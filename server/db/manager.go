@@ -4,11 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/MontFerret/ferret-server/pkg/auth"
 	"github.com/MontFerret/ferret-server/pkg/history"
 	"github.com/MontFerret/ferret-server/pkg/persistence"
 	"github.com/MontFerret/ferret-server/pkg/projects"
 	"github.com/MontFerret/ferret-server/pkg/scripts"
 	"github.com/MontFerret/ferret-server/server/db/repositories"
+
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
 	"github.com/pkg/errors"
@@ -19,6 +21,7 @@ const projectsCollection = "projects"
 const scriptsCollection = "scripts"
 const historyCollection = "history"
 const dataCollection = "data"
+const authCollection = "auth"
 
 type (
 	factory func(driver.Database, string) (interface{}, error)
@@ -26,8 +29,9 @@ type (
 	Manager struct {
 		client    driver.Client
 		systemDB  driver.Database
-		databases *sync.Map
 		projects  projects.Repository
+		auth      auth.Repository
+		databases *sync.Map
 		scripts   *sync.Map
 		histories *sync.Map
 		data      *sync.Map
@@ -81,10 +85,17 @@ func New(settings Settings) (*Manager, error) {
 		return nil, err
 	}
 
+	aut, err := repositories.NewAuthRepository(client, db, authCollection)
+
+	if err != nil {
+		return nil, err
+	}
+
 	manager := new(Manager)
 	manager.client = client
 	manager.systemDB = db
 	manager.projects = proj
+	manager.auth = aut
 	manager.histories = new(sync.Map)
 	manager.databases = new(sync.Map)
 	manager.scripts = new(sync.Map)
@@ -131,6 +142,10 @@ func (manager *Manager) GetDataRepository(projectID string) (persistence.Reposit
 	}
 
 	return repo.(persistence.Repository), nil
+}
+
+func (manager *Manager) GetAuthRepository() (auth.Repository, error) {
+	return manager.auth, nil
 }
 
 func (manager *Manager) resolveRepo(projectID string, collectionName string, cache *sync.Map, f factory) (interface{}, error) {

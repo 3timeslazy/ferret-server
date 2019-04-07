@@ -35,7 +35,8 @@ generate:
 		--exclude-main \
 		--target=${DIR_API_GEN} \
 		--spec=${DIR_API}/api.oas2.json \
-		--with-flatten=expand
+		--with-flatten=expand \
+		-P models.Principal
 
 doc:
 	godoc -http=:6060 -index

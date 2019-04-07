@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/MontFerret/ferret-server/server"
-	"github.com/namsral/flag"
 	"os"
 	"strings"
+
+	"github.com/MontFerret/ferret-server/server"
+	"github.com/namsral/flag"
 )
 
 var defaultSettings = server.NewDefaultSettings()
@@ -56,7 +57,14 @@ var (
 		"http server port number",
 	)
 
-	// Db
+	// Authentication
+	rootPassword = flag.String(
+		"root-password",
+		"",
+		"root password",
+	)
+
+	// DB
 	dbEndpoints Params
 )
 
@@ -71,7 +79,10 @@ func createSettings() (server.Settings, error) {
 	// HTTP
 	settings.HTTP.Port = *httpPort
 
-	// Db
+	// Authentication
+	settings.Auth.RootPassword = []byte(*rootPassword)
+
+	// DB
 	if len(dbEndpoints) > 0 {
 		settings.Database.Endpoints = dbEndpoints
 	}
